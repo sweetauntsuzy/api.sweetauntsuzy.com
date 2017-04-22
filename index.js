@@ -82,7 +82,32 @@ function getData(){
 var endpoint = (isLocal)? (new botbuilder.ConsoleConnector()) : new botbuilder.ChatConnector( { appId: kBotID, appPassword: kAppPW});
 var bot = new botbuilder.UniversalBot(endpoint);
 
-var server = restify.createServer();
-server.get('/heartbeat', (req,res,next)=>{ res.send(200); next(); });
+bot.dialog('/truth', (session,args,next)=>{
+  session.send('truth!');
+  next();
+});
+bot.dialog('/dare', (session,args,next)=>{
+  session.send('dare!');
+  next();
+});
 
-server.listen(kPort, ()=>{console.log(`${server.name} listening to ${server.url}`)});
+bot.dialog('/', [
+    (session)=>{
+      var dir = Math.random();
+      console.log(dir);
+      session.beginDialog( (dir>0.5) ? '/truth' : '/dare' );
+    }
+]);
+
+
+if (isLocal) {
+  endpoint.listen();
+} else {
+  var server = restify.createServer();
+  server.get('/heartbeat', (req,res,next)=>{ res.send(200); next(); });
+  server.post('/messages', endpoint.listen());
+  server.listen(kPort, ()=>{console.log(`${server.name} listening to ${server.url}`)});
+}
+
+
+
