@@ -62,8 +62,8 @@ function getSpreadsheetData( info ) {
 
     Promise.all( [getSpreadsheetRows(truthSpreadsheet), getSpreadsheetRows(dareSpreadsheet)] )
     .then( (sheets)=>{
-      resolve( {truth: sheets[0].map(decodeTruth),
-                dare: sheets[1].map(decodeDare)});
+      resolve( {truth: sheets[0].filter((e)=>{return e.active}).map(decodeTruth),
+                dare: sheets[1].filter((e)=>{return e.active}).map(decodeDare)});
     })
     .catch( (err)=>reject(err));
   });
@@ -79,23 +79,41 @@ function getData(){
   });
 }
 
+function truthOrDarePrompt(){
+  return 'So, dearies, truth or dare?';
+}
+
+function dareExclamation() {
+  return 'I love dares!';
+}
+
+function truthExclamation() {
+  return 'Oh, feeling honest?';
+}
+
 var endpoint = (isLocal)? (new botbuilder.ConsoleConnector()) : new botbuilder.ChatConnector( { appId: kBotID, appPassword: kAppPW});
 var bot = new botbuilder.UniversalBot(endpoint);
 
-bot.dialog('/truth', (session,args,next)=>{
-  session.send('truth!');
-  next();
-});
-bot.dialog('/dare', (session,args,next)=>{
-  session.send('dare!');
-  next();
-});
-
 bot.dialog('/', [
-    (session)=>{
-      var dir = Math.random();
-      console.log(dir);
-      session.beginDialog( (dir>0.5) ? '/truth' : '/dare' );
+    (session)=>{    
+        botbuilder.Prompts.choice(session, truthOrDarePrompt(),{truth:'truth', dare:'dare'});
+    },
+    (session,results)=>{
+      getData()
+      .then( (data)=>{
+        if (results.response.entity == 'truth') {
+          session.send( truthExclamation() );
+          var truth = data.truth[ Math.floor(Math.random()*data.truth.length) ];
+          session.send( truth.question );
+        } else if (results.response.entity == 'dare') {
+          session.send( dareExclamation() );
+          var dare = data.dare[ Math.floor(Math.random()*data.dare.length) ];
+          session.send( dare.question );
+        } else {
+          session.send('I\'m sorry dearie, I didn\'t quite get that...');
+        }
+      })
+      .catch( (err)=>{ session.send( `Something went wrong ${err.toString()}`) });
     }
 ]);
 
