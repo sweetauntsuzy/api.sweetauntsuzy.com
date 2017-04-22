@@ -1,3 +1,12 @@
+'use strict';
+var restify = require('restify');
+var botbuilder = require('botbuilder');
+
+var kPort = process.env.PORT || 4000;
+var kBotID = process.env.MS_APP_ID;
+var kAppPW = process.env.MS_APP_PASSWORD;
+var isLocal = process.env.IS_LOCAL;
+
 var gs = require('google-spreadsheet');
 var spreadsheetID = process.env.GOOGLE_SPREADSHEET_ID;
 
@@ -60,11 +69,20 @@ function getSpreadsheetData( info ) {
   });
 }
 
-spreadsheetInfo( spreadsheet )
-.then( getSpreadsheetData )
-.then( (data) => {
-  console.log(data);
-})
-.catch( function(err) {
-  console.error('Unable to get spreadsheet info: ', err.toString());
-});
+
+function getData(){
+  return new Promise( function (resolve, reject) {
+    spreadsheetInfo( spreadsheet )
+    .then( getSpreadsheetData )
+    .then( (data) => {resolve(data)})
+    .catch( (err)=>reject(err));
+  });
+}
+
+var endpoint = (isLocal)? (new botbuilder.ConsoleConnector()) : new botbuilder.ChatConnector( { appId: kBotID, appPassword: kAppPW});
+var bot = new botbuilder.UniversalBot(endpoint);
+
+var server = restify.createServer();
+server.get('/heartbeat', (req,res,next)=>{ res.send(200); next(); });
+
+server.listen(kPort, ()=>{console.log(`${server.name} listening to ${server.url}`)});
